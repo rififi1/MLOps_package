@@ -3,6 +3,7 @@ import uvicorn
 import pandas as pd
 import joblib
 import numpy as np
+from pydantic import BaseModel
 
 import scripts.data as data
 import scripts.model as model
@@ -55,16 +56,35 @@ async def feature_order():
             "types" : str(df.get_features_types())
             }
 
-@app.post("/predict/")
-async def predict(features: list[float]):
+class Item(BaseModel):
+    pclass: int
+    sex: int
+    age: float
+    sibsp: int 
+    parch: int
+    fare: float
+    embarked: int
+
+class Chill(BaseModel):
+    features: list
+
+
+@app.post("/predict_one/")
+async def predict_one(chill: Chill):
     global model_
+    
     if model_ is None:
         return {"error": "Model not loaded"}
     try:
-        # Ensure features are in the correct format (e.g., 2D array for scikit-learn)
-        input_data = np.array(features).reshape(1, -1)
-        prediction = model_.predict(input_data)
-        return {"prediction": prediction.tolist()}
+        lst = list(chill.features)
+        df = pd.DataFrame([lst])
+        df.columns =['Pclass','Sex','Age',"SibSp","Parch","Fare","Embarked"]
+        
+        try:
+            prediction = model_.predict(df)
+        except Exception as e:
+            raise e
+        return {"prediction": int(prediction[0])}
     except Exception as e:
         return {"error": str(e)}
 
