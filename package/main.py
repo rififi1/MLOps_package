@@ -3,38 +3,57 @@ import uvicorn
 import pandas as pd
 import joblib
 import numpy as np
+import os
 from pydantic import BaseModel
+#import glob
 
-import scripts.data as data
-import scripts.model as model
+from scripts.data import Dataset
+from scripts.model import Model
 
 model_ = None
 
 app = FastAPI()
 
+
+"""def list_pkl_files(directory):
+    # Construct the search pattern
+    search_pattern = os.path.join(directory, '*.pkl')
+
+    # Use glob to find all .pkl files
+    pkl_files = glob.glob(search_pattern)
+
+    return pkl_files"""
+
 @app.on_event("startup")
 async def load_model():
     print("on startup")
     print("Server is starting up.")
-    path = "data/"
-    df_train = data.Data(path+'train.csv')
-    df_test = data.Data(path+'test.csv')
+    
+    path = "data"
+    train_data = Dataset()
+    train_data.load_data(os.path.join(path,'train.csv'))
+    #df_test = Dataset(os.path.join(path, 'test.csv'))
 
-    df_train.clean()
-    df_test.clean()
+    train_data.clean()
+    #df_test.clean()
 
-    train_features,train_labels = df_train.split_label_features() 
+    train_features,train_labels = train_data.split_label_features() 
 
     global model_
-    model_ =  model.Model()
-    model_.fit(train_features,train_labels)
+    # TODO: add a check for existing pkl files, and load pkl if it exits
+    file_name = "default"
+    if os.path.isfile(f"{file_name}.pkl"):
+        model_ = Model(pickle_name=file_name)
+    else:
+        model_ =  Model()
+        model_.fit(train_features,train_labels, save_model=file_name)
     model_.set_accuracy(train_features,train_labels)
     print("model did fit, with accuracy ", model_.get_accuracy())  
 
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Welcome to our MLOps API."}
 
 @app.get("/accuracy")
 async def getter_accuracy():
@@ -50,7 +69,7 @@ async def getter_accuracy():
 @app.get("/feature_order")
 async def feature_order():
     path = "data/"
-    df = data.Data(path+'test.csv')
+    df = Dataset(path+'test.csv')
     df.clean()
     return {"features in order:": str(df.get_features()),
             "types" : str(df.get_features_types())
@@ -69,7 +88,7 @@ class Chill(BaseModel):
     features: list
 
 
-@app.post("/predict_one/")
+@app.post("/predict_one")
 async def predict_one(chill: Chill):
     global model_
     
