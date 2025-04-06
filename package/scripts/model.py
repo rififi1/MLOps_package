@@ -6,6 +6,7 @@ class Model():
     
     def __init__(self, pickle_name=None, models_folder="models"):
         self.models_folder = models_folder
+        print("models folder (existing models): ", os.listdir(models_folder))
 
         if pickle_name is None:
             self.model = SVC()
