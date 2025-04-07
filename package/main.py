@@ -10,6 +10,11 @@ from objects.http_objects import ModelChoice, Features, Predictions
 
 model_ = None
 
+MODELS_PATH = "models"
+DATA_PATH = "data"
+
+MODELS = ['SVM', 'Logistic']
+
 app = FastAPI()
 
 @app.on_event("startup")
@@ -21,29 +26,27 @@ async def load_model():
     
     # IMPORT AND CLEAN THE TRAIN DATASET
 
-    path = "data"
+    #path = "data"
     train_data = Dataset()
-    train_data.load_data(os.path.join(path,'train.csv'))
+    train_data.load_data(os.path.join(DATA_PATH,'train.csv'))
     train_data.clean()
     train_features,train_labels = train_data.split_label_features() # extract labels and features from the dataset
     
 
     # GET/TRAIN THE MODELS
 
-    models_folder = "models"
-    print("existing models: ", os.listdir(models_folder))
-
-    models = ['SVM', 'Logistic']
-    train_all_models(train_features, train_labels, models_folder, models)
+    #models_folder = "models"
+    print("existing models: ", os.listdir(MODELS_PATH))
+    train_all_models(train_features, train_labels, MODELS_PATH, MODELS)
 
 
     # LOAD THE 1ST MODEL AS DEFAULT MODEL
 
-    default_model_type = models[0] # 1st model is the default model
-    print("trying to get model: ", os.path.join(models_folder, f"{default_model_type}.pkl"))
+    default_model_type = MODELS[0] # 1st model is the default model
+    print("trying to get model: ", os.path.join(MODELS_PATH, f"{default_model_type}.pkl"))
 
     global model_
-    model_ = Model(models_folder=models_folder, model_type=default_model_type, pickle_=True)
+    model_ = Model(models_folder=MODELS_PATH, model_type=default_model_type, pickle_=True)
     print("loaded default model", default_model_type)
 
 
@@ -51,18 +54,6 @@ async def load_model():
 
     model_.set_accuracy(train_features,train_labels)
     print("Using default model, ", default_model_type, ", with accuracy ", model_.get_accuracy())
-
-    """if os.path.isfile(os.path.join(models_folder, f"{file_name}.pkl")):
-        # If default model is stored in a pickle file: instantiate a model with the existing pickle file 
-        model_ = Model(pickle_name=file_name, models_folder=models_folder)
-        print("loaded existing default model")
-    else:
-        # Else, train our own default model (and save it as default)
-        model_ =  Model(models_folder=models_folder)
-        model_.fit(train_features,train_labels, save_model=file_name)
-        print("trained new default model")
-    """
-
 
 @app.get("/")
 async def root():
@@ -80,29 +71,34 @@ async def getter_accuracy():
         return {"prediction": accuracy}
     except Exception as e:
         return {"error": str(e)}
+    
+@app.get("/list_model")
+async def list_model():
+    """Return the list of trained models."""
+    return{"ok": MODELS}
 
 @app.put("/switch_model")
 async def switch_model(model_choice: ModelChoice):
     global model_
-    models_folder="models"
+    #models_folder="models"
     try:
-        model_ = Model(pickle_=True, model_type=model_choice.model,models_folder=models_folder)
+        model_ = Model(pickle_=True, model_type=model_choice.model,models_folder=MODELS_PATH)
     except Exception as e:
-            return {"error": e}
+            return {"error": str(e)}
     return {"ok": model_.model_type}
-
 
 @app.get("/feature_order")
 async def feature_order():
     """Shows features order and types. Most likely useless in prod setup, but very useful for dev."""
 
-    path = "data"
+    #path = "data"
     df = Dataset()
-    df.load_data(os.path.join(path,'test.csv'))
+    df.load_data(os.path.join(DATA_PATH,'test.csv'))
     df.clean()
-    return {"features in order:": str(df.get_features()),
-            "types" : str(df.get_features_types())
-            }
+    return {
+        "features in order:": str(df.get_features()),
+        "types" : str(df.get_features_types())
+        }
 
 @app.get("/predict")
 async def predict_one(features: Features):
@@ -132,5 +128,4 @@ async def predict_one(features: Features):
 
 if __name__ == "__main__":
     # expose the docker VM to the computer's ports
-    uvicorn.run(app) #, host="0.0.0.0", port=8000) # uncomment when using docker # otherwise comment it or you'll expose your machine
-    
+    uvicorn.run(app)#, host="0.0.0.0", port=8000) # uncomment when using docker  # when not, comment it or you'll expose your machine
