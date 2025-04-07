@@ -26,7 +26,6 @@ async def load_model():
     
     # IMPORT AND CLEAN THE TRAIN DATASET
 
-    #path = "data"
     train_data = Dataset()
     train_data.load_data(os.path.join(DATA_PATH,'train.csv'))
     train_data.clean()
@@ -35,7 +34,6 @@ async def load_model():
 
     # GET/TRAIN THE MODELS
 
-    #models_folder = "models"
     print("existing models: ", os.listdir(MODELS_PATH))
     train_all_models(train_features, train_labels, MODELS_PATH, MODELS)
 
@@ -80,7 +78,6 @@ async def list_model():
 @app.put("/switch_model")
 async def switch_model(model_choice: ModelChoice):
     global model_
-    #models_folder="models"
     try:
         model_ = Model(pickle_=True, model_type=model_choice.model,models_folder=MODELS_PATH)
     except Exception as e:
@@ -91,7 +88,6 @@ async def switch_model(model_choice: ModelChoice):
 async def feature_order():
     """Shows features order and types. Most likely useless in prod setup, but very useful for dev."""
 
-    #path = "data"
     df = Dataset()
     df.load_data(os.path.join(DATA_PATH,'test.csv'))
     df.clean()
