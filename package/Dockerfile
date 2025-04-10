@@ -24,5 +24,8 @@ COPY . .
 # Expose the port on which the api server runs
 EXPOSE 8000
 
+# TODO: try without, not 100% it's actually useful
+VOLUME ["/app/models"]
+
 # Command to run the app
 CMD ["python", "main.py"]

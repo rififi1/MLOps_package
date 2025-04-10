@@ -6,12 +6,15 @@ import os
 from scripts.data import Dataset
 from scripts.model import Model
 from scripts.utils import *
+from scripts.api_helper import *
 from objects.http_objects import ModelChoice, Features, Predictions
+
 
 model_ = None
 
 MODELS_PATH = "models"
 DATA_PATH = "data"
+ACCURACY_FILE_NAME = "accuracies.csv"
 
 MODELS = ['SVM', 'Logistic']
 
@@ -23,7 +26,8 @@ async def load_model():
 
     print("on startup")
     print("Server is starting up.")
-    
+
+
     # IMPORT AND CLEAN THE TRAIN DATASET
 
     train_data = Dataset()
@@ -35,7 +39,7 @@ async def load_model():
     # GET/TRAIN THE MODELS
 
     print("existing models: ", os.listdir(MODELS_PATH))
-    train_all_models(train_features, train_labels, MODELS_PATH, MODELS)
+    train_all_models(train_features, train_labels, MODELS_PATH, MODELS, ACCURACY_FILE_NAME)
 
 
     # LOAD THE 1ST MODEL AS DEFAULT MODEL
@@ -48,9 +52,9 @@ async def load_model():
     print("loaded default model", default_model_type)
 
 
-    # SET AND GET MODEL'S ACCURACY
+    # LOAD AND GET MODEL'S ACCURACY
 
-    model_.set_accuracy(train_features,train_labels)
+    model_.load_accuracy(os.path.join(MODELS_PATH, ACCURACY_FILE_NAME))
     print("Using default model, ", default_model_type, ", with accuracy ", model_.get_accuracy())
 
 @app.get("/")
@@ -58,6 +62,7 @@ async def root():
     """Basic route to check that the server is up and running."""
     return {"message": "Welcome to our MLOps API."}
 
+# DEPRECATED, use /model/current or /model/list instead 
 @app.get("/accuracy")
 async def getter_accuracy():
     """Return the model's accuracy."""
@@ -66,20 +71,43 @@ async def getter_accuracy():
         return {"error": "Model not loaded"}
     try:
         accuracy = model_.get_accuracy()
-        return {"prediction": accuracy}
+        return {
+            "prediction": accuracy,
+            "WARNING": "route is deprecated, use /model/current or /model/list instead."
+            }
     except Exception as e:
         return {"error": str(e)}
     
-@app.get("/list_model")
+@app.get("/model/current")
+async def current_model():
+    """Return the model's name."""
+    global model_
+    if model_ is None:
+        return {"error": "Model not loaded"}
+    try:
+        accuracy = model_.get_accuracy()
+        return {
+            "model": model_.model_type,
+            "accuracy": accuracy
+            }
+    except Exception as e:
+        return {"error": str(e)}
+
+@app.get("/model/list")
 async def list_model():
     """Return the list of trained models."""
-    return{"ok": MODELS}
+    accuracies = get_accuracies(os.path.join(MODELS_PATH, ACCURACY_FILE_NAME))
+    print(accuracies)
+    accuracies = accuracies.T.to_dict('dict')
+    print(accuracies)
+    return accuracies
 
-@app.put("/switch_model")
+@app.put("/model/switch")
 async def switch_model(model_choice: ModelChoice):
     global model_
     try:
         model_ = Model(pickle_=True, model_type=model_choice.model,models_folder=MODELS_PATH)
+        model_.load_accuracy(os.path.join(MODELS_PATH, ACCURACY_FILE_NAME))
     except Exception as e:
             return {"error": str(e)}
     return {"ok": model_.model_type}
@@ -124,4 +152,4 @@ async def predict_one(features: Features):
 
 if __name__ == "__main__":
     # expose the docker VM to the computer's ports
-    uvicorn.run(app)#, host="0.0.0.0", port=8000) # uncomment when using docker  # when not, comment it or you'll expose your machine
+    uvicorn.run(app, host="0.0.0.0", port=8000) # uncomment when using docker  # when not, comment it or you'll expose your machine

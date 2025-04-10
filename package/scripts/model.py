@@ -2,6 +2,9 @@ from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 import pickle
 import os
+import pandas as pd
+
+from scripts.utils import *
 
 class Model():
     
@@ -43,6 +46,11 @@ class Model():
     def set_accuracy(self,test_features,test_labels): 
         """Set model's accuracy."""
         self.accuracy = self.model.score(test_features,test_labels) # SVC's default score is its accuracy.
+
+    def load_accuracy(self, csv_path):
+        """Load corresponding model's accuracy from csv file."""
+        accuracies = get_accuracies(csv_path)
+        self.accuracy = accuracies.loc[self.model_type, "accuracy"]
     
     def get_accuracy(self):
         """Get model's accuracy."""
