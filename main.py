@@ -141,4 +141,4 @@ async def predict(predict: Predict):
 
 if __name__ == "__main__":
     # expose the docker VM to the computer's ports
-    uvicorn.run(app)#, host="0.0.0.0", port=8000) # uncomment when using docker  # when not, comment it or you'll expose your machine
+    uvicorn.run(app, host="0.0.0.0", port=8000) # uncomment when using docker  # when not, comment it or you'll expose your machine
